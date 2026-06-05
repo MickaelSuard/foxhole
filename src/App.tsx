@@ -609,14 +609,14 @@ function App() {
                   <div className="group relative min-w-0" key={`${item.itemName}-${index}`}>
                     <button
                       aria-label={`Add ${item.itemName}. Costs ${costLabel}`}
-                      className={`relative flex aspect-square w-full items-center justify-center rounded-md border border-white/10 bg-[#4b514d] p-3 shadow-[inset_0_1px_rgba(255,255,255,0.08)] transition hover:-translate-y-px hover:border-[#e77c48]/60 hover:bg-[#616862] active:translate-y-0 active:bg-[#343a36] ${
+                      className={`cursor-pointer relative flex aspect-square w-full items-center justify-center rounded-md border border-white/10 bg-[#4b514d] p-3 shadow-[inset_0_1px_rgba(255,255,255,0.08)] transition hover:-translate-y-px hover:border-[#e77c48]/60 hover:bg-[#616862] active:translate-y-0 active:bg-[#343a36] ${
                         disabled ? 'cursor-not-allowed bg-[#202321] opacity-50' : 'cursor-pointer'
                       }`}
                       disabled={disabled}
                       onClick={(event) => addItem(index, event.shiftKey)}
                       type="button"
                     >
-                      <img className="h-[74%] w-[74%] object-contain" src={itemImage(item.imgName)} alt="" />
+                      <img className="object-contain" src={itemImage(item.imgName)} alt="" />
                       <span
                         className={`absolute bottom-1.5 right-1.5 min-w-7 rounded-full border px-2 py-0.5 text-center text-xs ${
                           stockQuantity > 0
