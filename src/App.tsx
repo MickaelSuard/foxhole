@@ -8,10 +8,16 @@ type ResourceKey = 'bmat' | 'rmat' | 'emat' | 'hemat'
 type Orders = Record<number, number>
 type OrdersByFactory = Record<FactoryType, Orders>
 
+type StockVehicle = {
+  name: string
+  quantity: number
+}
+
 type ParsedStock = {
   name: string
   timestamp: string
   quantities: Record<string, number>
+  vehicles: Record<string, StockVehicle>
   rowCount: number
 }
 
@@ -132,6 +138,139 @@ function normalizeStockKey(name: string) {
     .toLowerCase()
 }
 
+const STOCK_VEHICLE_NAMES = [
+  'R-12 - "Salus" Ambulance',
+  'R-12b - "Salva" Flame Truck',
+  'Dunne Dousing Engine 3r',
+  'Dunne Responder 3e',
+  "O'Brien V.101 Freeman",
+  "O'Brien v.200 Squire",
+  "O'Brien V.190 Knave",
+  "O'Brien V.113 Gravekeeper",
+  'T3 "Xiphos"',
+  "O'Brien V.130 Wild Jack",
+  "O'Brien V.121 Highlander",
+  'T5 "Percutio"',
+  'T8 "Gemini"',
+  "O'Brien V.110",
+  'BMS - Aquatipper',
+  'R-15 - "Chariot"',
+  'Dunne Caravaner 2f',
+  'BMS - Universal Assembly Rig',
+  'BMS - Fabricator',
+  'BMS - Class 2 Mobile Auto-Crane',
+  'Noble Firebrand Mk. XVII',
+  'Noble Widow MK. XIV',
+  'GA6 "Cestus"',
+  "Duncan's Coin 14.5mm",
+  'AA-2 "Battering Ram"',
+  'Balfour Rampart 68mm',
+  'Collins Cannon 68mm',
+  '40-45 "Smelter"',
+  'Balfour Wolfhound 40mm',
+  'G40 "Sagittarii"',
+  'Swallowtail 988/127-2',
+  '30-250 "Tisiphone" Field Cannon',
+  'Balfour Falconer 250mm',
+  'BMS - Packmule Flatbed',
+  'BMS - Ironship',
+  'Das Krokodil by VAC',
+  'Type B - "Lucian"',
+  '81f-f Ronan Blackguard',
+  'Type C - "Charon"',
+  '74b-1 Ronan Gunship',
+  'HH-d "Peltast"',
+  'HH-a "Javelin"',
+  'HH-b "Hoplite"',
+  'Niska-Rycker Mk. IX Skycaller',
+  'Niska Mk. II Blinder',
+  'Niska Mk. III Scar Twin',
+  'Niska Mk. I Gun Motor Carriage',
+  'BMS - Scrap Hauler',
+  'AU-A150 Taurine Rigger',
+  'Cnute Cliffwrest',
+  'AB-8 "Acheron"',
+  'AB-11 "Doru"',
+  'Mulloy LPC',
+  '945g "Stygian Bolt"',
+  'Balfour Stockade 75mm',
+  '120-68 "Koronides" Field Gun',
+  '40-250 "Alekto" Heavy Cannon',
+  'Rycker 4/3-F Wasp Nest',
+  'K-81e "Sombre"',
+  '68A-4 Ronan Fathomer',
+  'HC-2 "Scorpion"',
+  'HA-1 "Sagaris"',
+  'Sharkey-Devitt Birdeater Mk. I',
+  'Devitt-Caine Mk. IV MMR',
+  'H-5 "Hatchet"',
+  'Devitt Ironhide Mk. IV',
+  'H-19 "Vulcan"',
+  'H-8 "Kranesca"',
+  'H-10 "Pelekys"',
+  'Devitt Mk. III',
+  'Strider',
+  'Rinnspeir Ornitier-Class Gunship',
+  '86K-a "Bardiche"',
+  'Gallagher Thornfall Mk. VI',
+  'Gallagher Highwayman Mk. III',
+  'Gallagher Outlaw Mk. II',
+  '86K-c "Ranseur"',
+  'Gallagher Brigand Mk. I',
+  '90T-v "Nemesis"',
+  'Silverhand Lordscar - Mk. X',
+  '85K-b "Falchion"',
+  '85V-g "Talos"',
+  '85K-a "Spatha"',
+  'Silverhand Chieftain - Mk. VI',
+  'Silverhand - Mk. IV',
+  'Bellweather by VAC',
+  'HC-7 "Ballista"',
+  '03MM "Caster"',
+  '00MS "Stinger"',
+  'Kivela Power Wheel 80-1',
+  'King Jester Mk. I-1',
+  'King Gallant Mk. II',
+  'King Spire Mk. I',
+  'UV-05a "Argonaut"',
+  'UV-24 "Icarus"',
+  'Drummond Spitfire 100d',
+  'UV-5c "Odyssey"',
+  'Drummond Loscann 55c',
+  'Drummond 100a',
+  'T12 "Actaeon" Tankette',
+  'T14 "Vesta" Tankette',
+  'T13 "Deioneus" Rocket Battery',
+  'T20 "Ixion" Tankette',
+  'Rooster - Lamploader',
+  'Rooster - Tumblebox',
+  'Rooster - Junkwagon',
+  'R-1 Hauler',
+  'Dunne Leatherback 2a',
+  'RR-3 "Stolon" Tanker',
+  'Dunne Fuelrunner 2d',
+  'R-5b "Sisyphus" Hauler',
+  'Dunne Landrunner 12c',
+  'R-17 "Retiarius" Skirmisher',
+  'R-9 "Speartip" Escort',
+  'R-5 "Atlas" Hauler',
+  'Dunne Loadlugger 3c',
+  'Dunne Transport',
+]
+
+const STOCK_VEHICLE_KEYS = new Set(STOCK_VEHICLE_NAMES.map(normalizeStockKey))
+const vehicleItemByStockKey = new Map<string, Item>(
+  items
+    .filter((item) => item.itemCategory === 'vehicles' || item.itemCategory === 'shipables')
+    .map((item) => [normalizeStockKey(item.itemName), item]),
+)
+
+function parseQuantityField(value: string) {
+  const cleaned = cleanStockField(value).replace(/\s/g, '')
+  if (!/^\d+$/.test(cleaned)) return null
+  return Number.parseInt(cleaned, 10)
+}
+
 function parseStockText(text: string): ParsedStock {
   const lines = text
     .replace(/^\uFEFF/, '')
@@ -139,22 +278,36 @@ function parseStockText(text: string): ParsedStock {
     .map((line) => line.trim())
     .filter(Boolean)
 
-  const [stockName, timestamp] = splitStockLine(lines[0] ?? '')
+  const [firstName, firstValue] = splitStockLine(lines[0] ?? '')
+  const firstLineIsStockItem = parseQuantityField(firstValue) !== null
+  const dataLines = firstLineIsStockItem ? lines : lines.slice(1)
   const quantities: Record<string, number> = {}
+  const vehicles: Record<string, StockVehicle> = {}
 
-  for (const line of lines.slice(1)) {
+  for (const line of dataLines) {
     const [rawName, rawQuantity] = splitStockLine(line)
     const name = cleanStockField(rawName)
-    const quantity = Number.parseInt(cleanStockField(rawQuantity), 10)
+    const quantity = parseQuantityField(rawQuantity)
 
-    if (!/\(crate\)\s*$/i.test(name) || Number.isNaN(quantity)) continue
-    quantities[normalizeStockKey(name)] = quantity
+    if (quantity === null) continue
+
+    const key = normalizeStockKey(name)
+
+    if (/\(crate\)\s*$/i.test(name)) {
+      quantities[key] = quantity
+      continue
+    }
+
+    if (quantity > 0 && (STOCK_VEHICLE_KEYS.has(key) || vehicleItemByStockKey.has(key))) {
+      vehicles[key] = { name, quantity }
+    }
   }
 
   return {
-    name: cleanStockField(stockName),
-    timestamp: cleanStockField(timestamp),
+    name: firstLineIsStockItem ? '' : cleanStockField(firstName),
+    timestamp: firstLineIsStockItem ? '' : cleanStockField(firstValue),
     quantities,
+    vehicles,
     rowCount: Object.keys(quantities).length,
   }
 }
@@ -216,6 +369,13 @@ function App() {
 
   const totalCrates = RESOURCE_KEYS.reduce((sum, key) => sum + crateTotals[key], 0)
   const stockCrates = Object.values(parsedStock.quantities).reduce((sum, quantity) => sum + quantity, 0)
+  const stockVehicles = useMemo(
+    () =>
+      Object.entries(parsedStock.vehicles)
+        .map(([key, vehicle]) => ({ ...vehicle, key, item: vehicleItemByStockKey.get(key) }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' })),
+    [parsedStock.vehicles],
+  )
 
   function resetOrders() {
     setOrdersByFactory(emptyOrders())
@@ -437,7 +597,7 @@ function App() {
               ))}
             </div>
 
-            <section className="grid w-full max-w-171 grid-cols-2 gap-2 rounded-b-lg border border-t-0 border-white/10 bg-[#080a09] p-2 min-[384px]:grid-cols-3 min-[496px]:grid-cols-4 min-[608px]:grid-cols-5 min-[720px]:grid-cols-6">
+            <section className="grid w-full max-w-[684px] grid-cols-2 gap-2 rounded-b-lg border border-t-0 border-white/10 bg-[#080a09] p-2 min-[384px]:grid-cols-3 min-[496px]:grid-cols-4 min-[608px]:grid-cols-5 min-[720px]:grid-cols-6">
               {filteredItems.map(({ item, index }) => {
                 const disabled = isItemDisabledForMpf(index, item)
                 const stockQuantity = getStockQuantity(item)
@@ -546,6 +706,41 @@ function App() {
                     </div>
                   </div>
                 ))}
+              </div>
+
+              <div className="mb-3 flex items-center justify-between gap-3 border-b border-white/15 pb-2.5 text-lg font-bold text-white">
+                <span>Véhicules en stock</span>
+                <span className="rounded-full border border-white/10 bg-[#2d342f] px-2.5 py-1 text-sm text-[#d8d5cc]">
+                  {stockVehicles.length}
+                </span>
+              </div>
+              <div className="mb-4 rounded-md border border-white/10 bg-[#424942] p-2.5">
+                {stockVehicles.length === 0 ? (
+                  <p className="m-0 rounded-md border border-white/10 bg-[#2d342f] px-3 py-3 text-sm text-[#d8d5cc]">
+                    Il n'y a pas de véhicule en stock
+                  </p>
+                ) : (
+                  <div className="flex max-h-[360px] flex-col gap-2 overflow-y-auto pr-1">
+                    {stockVehicles.map((vehicle) => (
+                      <div
+                        className="flex min-h-[58px] items-center gap-2.5 rounded-md border border-white/10 bg-[#2d342f] px-2 py-2"
+                        key={vehicle.key}
+                      >
+                        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded bg-[#252b27] p-1.5">
+                          <img
+                            className="h-full w-full object-contain"
+                            src={vehicle.item ? itemImage(vehicle.item.imgName) : tabImage('vehicles.webp')}
+                            alt=""
+                          />
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">{vehicle.name}</span>
+                        <span className="rounded-full border border-[#f1a878] bg-[#e77c48] px-2.5 py-1 text-sm font-bold text-white">
+                          x{vehicle.quantity}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
