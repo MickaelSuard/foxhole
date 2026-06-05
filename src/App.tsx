@@ -450,10 +450,10 @@ function App() {
 
   return (
     <div className={`min-h-screen bg-[#052334] ${pageText}`}>
-      <div className="mx-auto max-w-[1480px] px-3.5 py-6">
-        <header className="mb-6 rounded-lg border border-[#f4f1e8]/10 bg-[#0a0f12]/60 p-[18px] shadow-[0_18px_45px_rgba(0,0,0,0.24)]">
-          <p className="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-[#8fc7a0]">Foxhole Logistics</p>
-          <h1 className="m-0 text-[clamp(32px,4vw,52px)] leading-none text-white">Poilu Calculator</h1>
+      <div className="mx-auto max-w-370 px-3.5 py-6">
+        <header className="mb-6 mx-22 rounded-lg border border-[#f4f1e8]/10 bg-[#0a0f12]/60 p-4.5 shadow-[0_18px_45px_rgba(0,0,0,0.24)]">
+          <p className="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-[#8fc7a0]">Foxhole</p>
+          <h1 className="m-0 text-[clamp(32px,4vw,52px)] leading-none text-white">Poilu Calculator ❤️ </h1>
         </header>
 
         <main className="grid items-start justify-center gap-7 xl:grid-cols-[minmax(0,684px)_minmax(360px,560px)]">
