@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
 import data from './assets/data.json'
+import stockEnText from './assets/stock-en.csv?raw'
+import stockFrText from './assets/stock-fr.csv?raw'
 import { calculateMpfCosts } from './lib/mpf'
 
 type Faction = 'colonial' | 'warden'
@@ -131,11 +133,15 @@ function normalizeStockKey(name: string) {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[\u201C\u201D]/g, '"')
     .replace(/[\u2018\u2019]/g, "'")
-    .replace(/\s*\(crate\)\s*$/i, '')
+    .replace(/\s*\((crate|caisse)\)\s*$/i, '')
     .replace(/\bmag\b/gi, '')
     .replace(/["']/g, '')
     .replace(/[^a-z0-9]+/gi, '')
     .toLowerCase()
+}
+
+function stripStockCrateSuffix(name: string) {
+  return name.replace(/\s*\((crate|caisse)\)\s*$/i, '').trim()
 }
 
 const STOCK_VEHICLE_NAMES = [
@@ -271,6 +277,67 @@ function parseQuantityField(value: string) {
   return Number.parseInt(cleaned, 10)
 }
 
+const STOCK_DATA_ALIASES: Array<[stockName: string, itemName: string]> = [
+  ['9mm', '9mm SMG'],
+  ['Neville Anti-Tank Rifle', '135 Neville Anti-Tank Rifle'],
+  ['Flare Mortar Shell', 'Mortar Flare Shell'],
+  ['Shrapnel Mortar Shell', 'Mortar Shrapnel Shell'],
+  ['RPG', 'R.P.G Shell'],
+  ['Shatter Missile', 'Shatter Missle'],
+  ['E681-B Hullbreaker Mine', 'E6881-B Hullbreaker Mine'],
+  ['Liaison Transmitter', 'Liason Transmitter'],
+  ['Leary Snare Trap 20', 'Leary Snare Trap 127'],
+  ['BMS - Universal Assembly Rig', 'BMS - Universal Assemly Rig'],
+]
+
+const dataItemKeyByNameKey = new Map(items.map((item) => [normalizeStockKey(item.itemName), normalizeStockKey(item.itemName)]))
+const manualDataItemKeyByStockKey = new Map(
+  STOCK_DATA_ALIASES.map(([stockName, itemName]) => [normalizeStockKey(stockName), normalizeStockKey(itemName)]),
+)
+
+function readStockNames(text: string) {
+  return text
+    .replace(/^\uFEFF/, '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [rawName, rawQuantity] = splitStockLine(line)
+      return { name: stripStockCrateSuffix(cleanStockField(rawName)), quantity: parseQuantityField(rawQuantity) }
+    })
+    .filter((row) => row.quantity !== null)
+    .map((row) => row.name)
+}
+
+function dataItemKeyForStockName(name: string) {
+  const key = normalizeStockKey(name)
+  return manualDataItemKeyByStockKey.get(key) ?? dataItemKeyByNameKey.get(key) ?? key
+}
+
+function buildStockAliasKeys() {
+  const aliases = new Map(dataItemKeyByNameKey)
+  const englishNames = readStockNames(stockEnText)
+  const localizedStockNames = [readStockNames(stockFrText)]
+
+  for (const name of englishNames) aliases.set(normalizeStockKey(name), dataItemKeyForStockName(name))
+
+  for (const stockNames of localizedStockNames) {
+    stockNames.forEach((name, index) => {
+      const englishName = englishNames[index]
+      if (englishName) aliases.set(normalizeStockKey(name), dataItemKeyForStockName(englishName))
+    })
+  }
+
+  return aliases
+}
+
+const stockAliasKeys = buildStockAliasKeys()
+
+function resolveStockKey(name: string) {
+  const key = normalizeStockKey(name)
+  return stockAliasKeys.get(key) ?? key
+}
+
 function parseStockText(text: string): ParsedStock {
   const lines = text
     .replace(/^\uFEFF/, '')
@@ -291,9 +358,9 @@ function parseStockText(text: string): ParsedStock {
 
     if (quantity === null) continue
 
-    const key = normalizeStockKey(name)
+    const key = resolveStockKey(name)
 
-    if (/\(crate\)\s*$/i.test(name)) {
+    if (/\s*\((crate|caisse)\)\s*$/i.test(name)) {
       quantities[key] = quantity
       continue
     }
@@ -445,7 +512,7 @@ function App() {
   }
 
   function getStockQuantity(item: Item) {
-    return parsedStock.quantities[normalizeStockKey(item.itemName)] ?? 0
+    return parsedStock.quantities[resolveStockKey(item.itemName)] ?? 0
   }
 
   return (
