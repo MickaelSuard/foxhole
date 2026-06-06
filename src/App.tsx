@@ -19,6 +19,7 @@ type ParsedStock = {
   name: string
   timestamp: string
   quantities: Record<string, number>
+  resources: Record<ResourceKey, number>
   vehicles: Record<string, StockVehicle>
   rowCount: number
 }
@@ -113,6 +114,10 @@ function getFullQueueSize(factoryType: FactoryType, item: Item) {
 function resourceLabel(key: ResourceKey, value?: number) {
   if (!value) return ''
   return `${value} ${RESOURCE_META[key].title}`
+}
+
+function emptyResourceTotals(): Record<ResourceKey, number> {
+  return { bmat: 0, rmat: 0, emat: 0, hemat: 0 }
 }
 
 function splitStockLine(line: string) {
@@ -290,6 +295,17 @@ const STOCK_DATA_ALIASES: Array<[stockName: string, itemName: string]> = [
   ['BMS - Universal Assembly Rig', 'BMS - Universal Assemly Rig'],
 ]
 
+const STOCK_RESOURCE_NAMES: Record<ResourceKey, string> = {
+  bmat: 'Basic Materials',
+  rmat: 'Refined Materials',
+  emat: 'Explosive Powder',
+  hemat: 'Heavy Explosive Powder',
+}
+
+const stockResourceKeyByStockKey = new Map<string, ResourceKey>(
+  RESOURCE_KEYS.map((key) => [normalizeStockKey(STOCK_RESOURCE_NAMES[key]), key]),
+)
+
 const dataItemKeyByNameKey = new Map(items.map((item) => [normalizeStockKey(item.itemName), normalizeStockKey(item.itemName)]))
 const manualDataItemKeyByStockKey = new Map(
   STOCK_DATA_ALIASES.map(([stockName, itemName]) => [normalizeStockKey(stockName), normalizeStockKey(itemName)]),
@@ -349,6 +365,7 @@ function parseStockText(text: string): ParsedStock {
   const firstLineIsStockItem = parseQuantityField(firstValue) !== null
   const dataLines = firstLineIsStockItem ? lines : lines.slice(1)
   const quantities: Record<string, number> = {}
+  const resources = emptyResourceTotals()
   const vehicles: Record<string, StockVehicle> = {}
 
   for (const line of dataLines) {
@@ -362,6 +379,10 @@ function parseStockText(text: string): ParsedStock {
 
     if (/\s*\((crate|caisse)\)\s*$/i.test(name)) {
       quantities[key] = quantity
+
+      const resourceKey = stockResourceKeyByStockKey.get(key)
+      if (resourceKey) resources[resourceKey] = quantity
+
       continue
     }
 
@@ -374,6 +395,7 @@ function parseStockText(text: string): ParsedStock {
     name: firstLineIsStockItem ? '' : cleanStockField(firstName),
     timestamp: firstLineIsStockItem ? '' : cleanStockField(firstValue),
     quantities,
+    resources,
     vehicles,
     rowCount: Object.keys(quantities).length,
   }
@@ -769,7 +791,12 @@ function App() {
                     </span>
                     <div className="flex min-h-[52px] items-center justify-between rounded-md border border-white/10 bg-[#424942]">
                       <img className="ml-2 h-8 w-8" src="/assets/images/resources/crate.webp" alt="" />
-                      <span className="p-2.5">{crateTotals[key]}</span>
+                       <span className="flex flex-col items-end gap-0.5 p-2.5 text-right">
+                        <span>{crateTotals[key]}</span>
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#8fc7a0]">
+                          Stock : {parsedStock.resources[key]}
+                        </span>
+                      </span>
                     </div>
                   </div>
                 ))}
